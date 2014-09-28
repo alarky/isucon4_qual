@@ -12,4 +12,4 @@ mysql -h ${myhost} -P ${myport} -u ${myuser} ${mydb} < /home/isucon/sql/schema.s
 mysql -h ${myhost} -P ${myport} -u ${myuser} ${mydb} < /home/isucon/sql/dummy_users.sql
 mysql -h ${myhost} -P ${myport} -u ${myuser} ${mydb} < /home/isucon/sql/dummy_log.sql
 
-carton exec perl /home/isucon/webapp/init/initialize.pl
+carton exec perl /home/isucon/webapp/perl/script/initialize.pl >> /tmp/initialize.log

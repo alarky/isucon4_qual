@@ -42,8 +42,8 @@ for my $log (@$logs) {
 }
 
 $redis->hmset('failure_by_user', %failure_by_user);
-#d $redis->hlen('failure_by_user');
+d $redis->hlen('failure_by_user');
 $redis->hmset('failure_by_ip', %failure_by_ip);
-#d $redis->hlen('failure_by_ip');
+d $redis->hlen('failure_by_ip');
 $redis->hmset('last_succeeded', %last_succeeded);
-#d $redis->hlen('last_succeeded');
+d $redis->hlen('last_succeeded');
