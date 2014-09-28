@@ -3,6 +3,7 @@ use warnings;
 use utf8;
 use DBIx::Sunny;
 use Redis;
+use JSON::XS;
 
 sub d { use Data::Dumper; print Dumper(@_); }
 
@@ -33,12 +34,16 @@ for my $log (@$logs) {
     $failure_by_ip{$log->{ip}}++;
 
     if ($log->{succeeded}) {
-        $last_succeeded{$log->{user_id}} = $log->{created_at};
+		$last_succeeded{$log->{user_id}} = encode_json(+{
+			created_at => $log->{created_at},
+			ip => $log->{ip},
+		});
     }
 }
 
-d \%failure_by_user;
-my $wait=<STDIN>;
-d \%failure_by_ip;
-my $wait=<STDIN>;
-d \%last_succeeded;
+$redis->hmset('failure_by_user', %failure_by_user);
+#d $redis->hlen('failure_by_user');
+$redis->hmset('failure_by_ip', %failure_by_ip);
+#d $redis->hlen('failure_by_ip');
+$redis->hmset('last_succeeded', %last_succeeded);
+#d $redis->hlen('last_succeeded');
