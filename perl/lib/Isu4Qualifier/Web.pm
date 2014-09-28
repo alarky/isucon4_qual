@@ -144,19 +144,23 @@ sub banned_ips {
   # failリストまわす
   my %total_failures = $redis->hgetall('total_failure_by_ip');
   foreach my $key(keys(%total_failures)){
-     # ログイン成功したことがないipを配列にいれる
-     my $failure_count = $redis->hget('failure_by_ip', $key);
-     if($failure_count == $total_failures{$key}){
-        push @ips, $key;
-        next;
-     }
-
      # failureを規定数以上しているipを配列にいれてく
      if($threshold <= $total_failures{$key}){
         push @ips, $key;
-        next;
      }
   }
+
+  # login成功リストをまわす
+  my %total_succeeded = $redis->hgetall('last_succeeded');
+  foreach my $key(keys(%total_succeeded)){
+     my $succeeded = decode_json($total_succeeded{$key});
+     # ログインを規定数以上している人を配列にいれてく
+     if($threshold <= $succeeded->{count})
+     {
+        push @ips, $ID_OF{$key}->{next_ip};
+     }
+  }
+
 
   \@ips;
 };
@@ -166,19 +170,30 @@ sub locked_users {
   my @user_ids;
   my $threshold = $self->config->{user_lock_threshold};
 
-  for (@$users) {
-     # ログインしたことない人を配列にいれてく
-     my $last_succeeded = $redis->hget('last_succeeded', $_->{id});
-     if(!$last_succeeded)
-     {
-        push @user_ids, $ID_OF{$_->{id}}->{login};
-     }
-  }
+#  for (@$users) {
+#     # ログインしたことない人を配列にいれてく
+#     my $last_succeeded = $redis->hget('last_succeeded', $_->{id});
+#     if(!$last_succeeded)
+#     {
+#        push @user_ids, $ID_OF{$_->{id}}->{login};
+#     }
+#  }
 
   my %total_failures = $redis->hgetall('total_failure_by_user');
   foreach my $key(keys(%total_failures)){
      # failureを規定数以上している人を配列にいれてく
      if($threshold <= $total_failures{$key})
+     {
+        push @user_ids, $ID_OF{$key}->{login};
+     }
+  }
+
+  # login成功リストをまわす
+  my %total_succeeded = $redis->hgetall('last_succeeded');
+  foreach my $key(keys(%total_succeeded)){
+     my $succeeded = decode_json($total_succeeded{$key});
+     # ログインを規定数以上している人を配列にいれてく
+     if($threshold <= $succeeded->{count})
      {
         push @user_ids, $ID_OF{$key}->{login};
      }
@@ -192,14 +207,17 @@ sub login_log {
   if($succeeded == 1){
      my $old_ip = "";
      my $old_created_at = "";
+     my $count = 1;
      my $last_succeeded = $redis->hget('last_succeeded', $user_id);
      if($last_succeeded)
      {
          $last_succeeded = decode_json($last_succeeded);
+         $count		 = $last_succeeded->{count} + 1; 
          $old_ip	 = $last_succeeded->{next_ip};
          $old_created_at = $last_succeeded->{next_created_at};
      }
      my $succeeded_info = +{
+         count => $count,
          created_at => $old_created_at,
          ip => $old_ip,
          next_created_at => strftime("%Y-%m-%d %H:%M:%S",localtime),
