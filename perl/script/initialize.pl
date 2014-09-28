@@ -26,21 +26,27 @@ my $redis = Redis->new;
 $redis->flushall;
 
 my $logs = $dbh->select_all("SELECT * FROM login_log");
+my %total_failure_by_user;
 my %failure_by_user;
 my %failure_by_ip;
 my %last_succeeded;
 for my $log (@$logs) {
-    $failure_by_user{$log->{user_id}}++;
-    $failure_by_ip{$log->{ip}}++;
-
     if ($log->{succeeded}) {
+        $failure_by_user{$log->{user_id}} = 0;
+        $failure_by_ip{$log->{ip}} = 0;
 		$last_succeeded{$log->{user_id}} = encode_json(+{
 			created_at => $log->{created_at},
 			ip => $log->{ip},
 		});
+    } else {
+        $total_failure_by_user{$log->{user_id}}++;
+        $failure_by_user{$log->{user_id}}++;
+        $failure_by_ip{$log->{ip}}++;
     }
 }
 
+$redis->hmset('total_failure_by_user', %total_failure_by_user);
+d $redis->hlen('total_failure_by_user');
 $redis->hmset('failure_by_user', %failure_by_user);
 d $redis->hlen('failure_by_user');
 $redis->hmset('failure_by_ip', %failure_by_ip);
