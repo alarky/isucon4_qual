@@ -91,9 +91,16 @@ sub vcl_fetch {
      return (deliver);
 }
 # 
-# sub vcl_deliver {
-#     return (deliver);
-# }
+ sub vcl_deliver {
+     if (req.http.Authorization || req.http.Cookie) {
+         /* Not cacheable by default */
+		 return (deliver);
+     }
+     if (req.url ~ "^/$") {
+		 unset resp.http.Set-Cookie;
+     }
+     return (deliver);
+ }
 # 
 # sub vcl_error {
 #     set obj.http.Content-Type = "text/html; charset=utf-8";
