@@ -74,13 +74,23 @@ sub calculate_password_hash {
 sub user_locked {
   my ($self, $user) = @_;
 
-  $self->config->{user_lock_threshold} <= $redis->hget('failure_by_user', $user->{'id'});
+  my $user = $redis->hget('failure_by_user', $user->{'id'});
+  if(!$user){
+     return undef;
+  }
+
+  return $self->config->{user_lock_threshold} <= $user;
 };
 
 sub ip_banned {
   my ($self, $ip) = @_;
 
-  $self->config->{ip_ban_threshold} <= $redis->hget('failure_by_ip', $ip);
+  my $ip = $redis->hget('failure_by_ip', $ip);
+  if(!$ip){
+     return undef;
+  }
+
+  return $self->config->{ip_ban_threshold} <= $ip;
 };
 
 sub attempt_login {
@@ -130,7 +140,7 @@ sub last_login {
    created_at => $succeeded->{created_at},
   };
 
-  @$user;
+  $user;
 };
 
 sub banned_ips {
