@@ -141,19 +141,21 @@ sub banned_ips {
   my @ips;
   my $threshold = $self->config->{ip_ban_threshold};
 
-  my $not_succeeded = $self->db->select_all('SELECT ip FROM (SELECT ip, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY ip) AS t0 WHERE t0.max_succeeded = 0 AND t0.cnt >= ?', $threshold);
+  # failリストまわす
+  my %total_failures = $redis->hgetall('total_failure_by_ip');
+  foreach my $key(keys(%total_failures)){
+     # ログイン成功したことがないipを配列にいれる
+     my $failure_ip = $redis->hget('failure_by_ip', $key);
+     if($failure_by_ip->{count} == $total_failures[$key]){
+        push @user_ids, $key;
+        continue;
+     }
 
-  foreach my $row (@$not_succeeded) {
-    push @ips, $row->{ip};
-  }
-
-  my $last_succeeds = $self->db->select_all('SELECT ip, MAX(id) AS last_login_id FROM login_log WHERE succeeded = 1 GROUP by ip');
-
-  foreach my $row (@$last_succeeds) {
-    my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE ip = ? AND ? < id', $row->{ip}, $row->{last_login_id});
-    if ($threshold <= $count) {
-      push @ips, $row->{ip};
-    }
+     # failureを規定数以上しているipを配列にいれてく
+     if($threshold <= $total_failures[$key]){
+        push @user_ids, $key};
+        continue;
+     }
   }
 
   \@ips;
@@ -164,19 +166,22 @@ sub locked_users {
   my @user_ids;
   my $threshold = $self->config->{user_lock_threshold};
 
-  my $not_succeeded = $self->db->select_all('SELECT user_id, login FROM (SELECT user_id, login, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY user_id) AS t0 WHERE t0.user_id IS NOT NULL AND t0.max_succeeded = 0 AND t0.cnt >= ?', $threshold);
-
-  foreach my $row (@$not_succeeded) {
-    push @user_ids, $row->{login};
+  for (@$users) {
+     # ログインしたことない人を配列にいれてく
+     my $last_succeeded = $redis->hget('last_succeeded', $_->{id});
+     if(!$last_succeeded)
+     {
+        push @user_ids, $ID_OF{$_->{id}}->{login};
+     }
   }
 
-  my $last_succeeds = $self->db->select_all('SELECT user_id, login, MAX(id) AS last_login_id FROM login_log WHERE user_id IS NOT NULL AND succeeded = 1 GROUP BY user_id');
-
-  foreach my $row (@$last_succeeds) {
-    my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE user_id = ? AND ? < id', $row->{user_id}, $row->{last_login_id});
-    if ($threshold <= $count) {
-      push @user_ids, $row->{login};
-    }
+  my %total_failures = $redis->hgetall('total_failure_by_user');
+  foreach my $key(keys(%total_failures)){
+     # failureを規定数以上している人を配列にいれてく
+     if($threshold <= $total_failures[$key])
+     {
+        push @user_ids, $ID_OF{$key}->{login};
+     }
   }
 
   \@user_ids;
@@ -214,6 +219,7 @@ sub login_log {
      $redis->hincrby('failure_by_ip', $ip, $increment);
 
      $redis->hincrby('total_failure_by_user', $user_id, $increment);
+     $redis->hincrby('total_failure_by_ip', $ip, $increment);
   }
 };
 
