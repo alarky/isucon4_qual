@@ -151,11 +151,10 @@ sub banned_ips {
   }
 
   # login成功リストをまわす
-  my %total_succeeded = $redis->hgetall('last_succeeded');
+  my %total_succeeded = $redis->hgetall('total_succeeced_by_ip');
   foreach my $key(keys(%total_succeeded)){
-     my $succeeded = decode_json($total_succeeded{$key});
      # ログインを規定数以上している人を配列にいれてく
-     if($threshold <= $succeeded->{count})
+     if($threshold <= $total_succeeded{$key})
      {
         push @ips, $ID_OF{$key}->{next_ip};
      }
@@ -189,11 +188,10 @@ sub locked_users {
   }
 
   # login成功リストをまわす
-  my %total_succeeded = $redis->hgetall('last_succeeded');
+  my %total_succeeded = $redis->hgetall('total_succeeced_by_user');
   foreach my $key(keys(%total_succeeded)){
-     my $succeeded = decode_json($total_succeeded{$key});
      # ログインを規定数以上している人を配列にいれてく
-     if($threshold <= $succeeded->{count})
+     if($threshold <= $redis->hget('total_succeeced_by_user', $key))
      {
         push @user_ids, $ID_OF{$key}->{login};
      }
@@ -212,7 +210,6 @@ sub login_log {
      if($last_succeeded)
      {
          $last_succeeded = decode_json($last_succeeded);
-         $count		 = $last_succeeded->{count} + 1; 
          $old_ip	 = $last_succeeded->{next_ip};
          $old_created_at = $last_succeeded->{next_created_at};
      }
@@ -228,6 +225,9 @@ sub login_log {
      $redis->hset('last_succeeded', $user_id, $json_succeeded);
      $redis->hset('failure_by_user', $user_id, 0);
      $redis->hset('failure_by_ip', $ip, 0);
+
+     $redis->hincrby('total_succeeded_by_user', $user_id, 1);
+     $redis->hincrby('total_succeeded_by_ip', $ip, 1);
   }
   else
   {
