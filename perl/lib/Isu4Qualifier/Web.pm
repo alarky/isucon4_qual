@@ -7,6 +7,13 @@ use Kossy;
 use DBIx::Sunny;
 use Digest::SHA qw/ sha256_hex /;
 use Data::Dumper;
+use Redis;
+use Encode;
+use Json::XS;
+use Json qw/ decode_json /;
+use POSIX qw/strftime/;
+
+my $redis      = Redis->new(sock => '/tmp/redis.sock');
 
 
 
@@ -66,20 +73,14 @@ sub calculate_password_hash {
 
 sub user_locked {
   my ($self, $user) = @_;
-  my $log = $self->db->select_row(
-    'SELECT COUNT(1) AS failures FROM login_log WHERE user_id = ? AND id > IFNULL((select id from login_log where user_id = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
-    $user->{'id'}, $user->{'id'});
 
-  $self->config->{user_lock_threshold} <= $log->{failures};
+  $self->config->{user_lock_threshold} <= $redis->hget('failure_by_user', $user->{'id'});
 };
 
 sub ip_banned {
   my ($self, $ip) = @_;
-  my $log = $self->db->select_row(
-    'SELECT COUNT(1) AS failures FROM login_log WHERE ip = ? AND id > IFNULL((select id from login_log where ip = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
-    $ip, $ip);
 
-  $self->config->{ip_ban_threshold} <= $log->{failures};
+  $self->config->{ip_ban_threshold} <= $redis->hget('failure_by_ip', $ip);
 };
 
 sub attempt_login {
@@ -119,11 +120,17 @@ sub current_user {
 sub last_login {
   my ($self, $user_id) = @_;
 
-  my $logs = $self->db->select_all(
-   'SELECT * FROM login_log WHERE succeeded = 1 AND user_id = ? ORDER BY id DESC LIMIT 2',
-   $user_id);
 
-  @$logs[-1];
+  my $succeeded = $redis->hget('last_succeeded', $user_id);
+  $succeeded = decode_json($succeeded_info);
+
+  my $user = +{
+   login => $ID_OF{$user_id}->{login},
+   ip	=> $succeeded->{ip},
+   created_at => $succeeded->{created_at},
+  };
+
+  @$user;
 };
 
 sub banned_ips {
@@ -174,10 +181,24 @@ sub locked_users {
 
 sub login_log {
   my ($self, $succeeded, $login, $ip, $user_id) = @_;
-  $self->db->query(
-    'INSERT INTO login_log (`created_at`, `user_id`, `login`, `ip`, `succeeded`) VALUES (NOW(),?,?,?,?)',
-    $user_id, $login, $ip, ($succeeded ? 1 : 0)
-  );
+  if($succeeded == 1){
+     my $succeeded_info = +{
+         created_at => strftime("%Y-%m-%d %H:%M:%S",localtime),
+         ip => $ip
+     };
+     my $json_succeeded = encode_json($succeeded_info);
+
+     $redis->hset('last_succeeded', $user_id, $json_succeeded);
+     $redis->hset('failure_by_user', $user_id, 0);
+     $redis->hset('failure_by_ip', $ip, 0);
+  }
+  else
+  {
+     # TODO: data存在するかのチェックいるのか
+     my $increment = 1;
+     $redus->hincrby('failure_by_user', $user_id, $increment);
+     $redus->hincrby('failure_by_ip', $ip, $increment);
+  }
 };
 
 sub set_flash {
