@@ -22,7 +22,6 @@ my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isu4_qualifier;host=127.0.0.
                                 }
                             );
 
-
 my $users = $dbh->select_all("SELECT * FROM users");
 my %LOGIN_OF;
 my %ID_OF_LOGIN;
@@ -85,7 +84,7 @@ sub ip_banned {
 
 sub attempt_login {
   my ($self, $login, $password, $ip) = @_;
-  my $user = %LOGIN_OF{$login};
+  my $user = $LOGIN_OF{$login};
 
   if ($self->ip_banned($ip)) {
     $self->login_log(0, $login, $ip, $user ? $user->{id} : undef);
@@ -114,7 +113,7 @@ sub attempt_login {
 sub current_user {
   my ($self, $user_id) = @_;
 
-  return %LOGIN_OF{%ID_OF_LOGIN{$id}};
+  return $LOGIN_OF{$ID_OF_LOGIN{$user_id}};
 };
 
 sub last_login {
