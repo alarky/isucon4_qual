@@ -59,11 +59,6 @@ sub db {
   };
 }
 
-sub calculate_password_hash {
-  my ($password, $salt) = @_;
-  sha256_hex($password . ':' . $salt);
-};
-
 sub user_locked {
   my ($self, $user) = @_;
   my $log = $self->db->select_row(
@@ -96,7 +91,7 @@ sub attempt_login {
     return undef, 'locked';
   }
 
-  if ($user && calculate_password_hash($password, $user->{salt}) eq $user->{password_hash}) {
+  if ($user && sha256_hex($password.':'.$user->{salt}) eq $user->{password_hash}) {
     $self->login_log(1, $login, $ip, $user->{id});
     return $user, undef;
   }
