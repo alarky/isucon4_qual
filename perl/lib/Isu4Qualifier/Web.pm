@@ -10,7 +10,7 @@ use Data::Dumper;
 
 
 
-my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isucon;host=127.0.0.1;port=3306",
+my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isu4_qualifier;host=127.0.0.1;port=3306",
                                 "root",
                                 "",
                                 {
