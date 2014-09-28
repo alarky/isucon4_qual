@@ -9,8 +9,8 @@ use Digest::SHA qw/ sha256_hex /;
 use Data::Dumper;
 use Redis;
 use Encode;
-use Json::XS;
-use Json qw/ decode_json /;
+use JSON::XS;
+use JSON qw/ decode_json /;
 use POSIX qw/strftime/;
 
 my $redis      = Redis->new(sock => '/tmp/redis.sock');
@@ -122,7 +122,7 @@ sub last_login {
 
 
   my $succeeded = $redis->hget('last_succeeded', $user_id);
-  $succeeded = decode_json($succeeded_info);
+  $succeeded = decode_json($succeeded);
 
   my $user = +{
    login => $ID_OF{$user_id}->{login},
@@ -196,8 +196,8 @@ sub login_log {
   {
      # TODO: data存在するかのチェックいるのか
      my $increment = 1;
-     $redus->hincrby('failure_by_user', $user_id, $increment);
-     $redus->hincrby('failure_by_ip', $ip, $increment);
+     $redis->hincrby('failure_by_user', $user_id, $increment);
+     $redis->hincrby('failure_by_ip', $ip, $increment);
   }
 };
 
