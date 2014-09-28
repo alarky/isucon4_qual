@@ -13,7 +13,7 @@ use JSON::XS;
 use JSON qw/ decode_json /;
 use POSIX qw/strftime/;
 
-my $redis      = Redis->new(sock => '/tmp/redis.sock');
+my $redis      = Redis->new;
 
 my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isu4_qualifier;host=127.0.0.1;port=3306",
                                 "root",
@@ -154,11 +154,14 @@ sub banned_ips {
      }
   }
 
-  # login成功リストをまわす
-  my %total_succeeded = $redis->hgetall('total_succeeced_by_ip');
-  foreach my $key(keys(%total_succeeded)){
+  # login試行リストをまわす
+  my %total_try = $redis->hgetall('try_by_ip');
+  foreach my $key(keys(%total_try)){
+     # カウンタ取得　
+     my $try_count = $total_try{count_till_login} + $total_try{count_trying};
+
      # ログインを規定数以上している人を配列にいれてく
-     if($threshold <= $total_succeeded{$key})
+     if($threshold <= $try_count)
      {
         push @ips, $ID_OF{$key}->{next_ip};
      }
@@ -195,13 +198,16 @@ sub locked_users {
      }
   }
 
-  # login成功リストをまわす
-  my %total_succeeded = $redis->hgetall('total_succeeced_by_user');
-  foreach my $key(keys(%total_succeeded)){
+  # login試行リストをまわす
+  my %total_try = $redis->hgetall('try_by_user');
+  foreach my $key(keys(%total_try)){
+     # カウンタ取得　
+     my $try_count = $total_try{count_till_login} + $total_try{count_trying};
+
      # ログインを規定数以上している人を配列にいれてく
-     if($threshold <= $redis->hget('total_succeeced_by_user', $key))
+     if($threshold <= $try_count)
      {
-        push @user_ids, $ID_OF{$key}->{login};
+        push @user_ids, $ID_OF{$key}->{user};
      }
   }
 
@@ -234,8 +240,32 @@ sub login_log {
      $redis->hset('failure_by_user', $user_id, 0);
      $redis->hset('failure_by_ip', $ip, 0);
 
-     $redis->hincrby('total_succeeded_by_user', $user_id, 1);
-     $redis->hincrby('total_succeeded_by_ip', $ip, 1);
+     my $try_ip_count = 1;
+     my $try_ip = $redis->hget('try_by_ip', $ip);
+     if($try_ip){
+		$try_ip  = decode_json($try_ip);
+        $try_ip_count = $try_ip->{count_till_login};
+        ++$try_ip_count;
+     }
+     my $update_try_ip = +{
+        count_till_login => $try_ip_count,
+        count_trying     => 0
+     };
+
+     my $try_user_count = 1;
+     my $try_user = $redis->hget('try_by_user', $user_id);
+     if($try_user){
+        $try_user  = decode_json($try_user);
+        $try_user_count = $try_user->{count_till_login};
+        ++$try_user_count;
+     }
+     my $update_try_user = +{
+        count_till_login => $try_user_count,
+        count_trying     => 0
+     };
+
+     $redis->hset('try_by_user', $user_id, encode_json($update_try_user));
+     $redis->hset('try_by_ip', $ip, encode_json($update_try_ip));
   }
   else
   {
@@ -246,6 +276,37 @@ sub login_log {
 
      $redis->hincrby('total_failure_by_user', $user_id, $increment);
      $redis->hincrby('total_failure_by_ip', $ip, $increment);
+
+     my $ip_till_count = 0;
+     my $ip_try_count = 0;
+     my $try_ip = $redis->hget('try_by_ip', $ip);
+     if($try_ip){
+        $try_ip  = decode_json($try_ip);
+        $ip_till_count = $try_ip->{count_till_login};
+        $ip_try_count = $try_ip->{count_trying};
+        ++$ip_try_count;
+     }
+     my $update_try_ip = +{
+        count_till_login => $ip_till_count,
+        count_trying     => $ip_try_count 
+     };
+
+     my $user_till_count = 0;
+     my $user_try_count = 0;
+     my $try_user = $redis->hget('try_by_user', $user_id);
+     if($try_user){
+        $try_user  = decode_json($try_user);
+        $user_till_count = $try_user->{count_till_login};
+        $user_try_count = $try_user->{count_trying};
+        ++$user_try_count;
+     }
+     my $update_try_user = +{
+        count_till_login => $user_till_count,
+        count_trying     => $user_try_count 
+     };
+
+     $redis->hset('try_by_user', $user_id, encode_json($update_try_user));
+     $redis->hset('try_by_ip', $ip, encode_json($update_try_ip));
   }
 };
 

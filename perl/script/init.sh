@@ -12,4 +12,9 @@ mysql -h ${myhost} -P ${myport} -u ${myuser} ${mydb} < /home/isucon/sql/schema.s
 mysql -h ${myhost} -P ${myport} -u ${myuser} ${mydb} < /home/isucon/sql/dummy_users.sql
 mysql -h ${myhost} -P ${myport} -u ${myuser} ${mydb} < /home/isucon/sql/dummy_log.sql
 
+sudo -E service memcached restart
+sudo -E service redis restart
 carton exec perl /home/isucon/webapp/perl/script/initialize.pl >> /tmp/initialize.log
+sudo -E service supervisord stop
+sleep 1
+sudo -E service supervisord start
