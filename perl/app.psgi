@@ -5,7 +5,8 @@ use File::Basename;
 use Plack::Builder;
 use Isu4Qualifier::Web;
 use Plack::Session::State::Cookie;
-use Plack::Session::Store::File;
+use Plack::Session::Store::Cache;
+use Cache::Memcached::Fast;
 
 my @opts = qw(sigexit=int savesrc=0 start=no file=/home/isucon/webapp/public/nytprof/nytprof.out);
 $ENV{"NYTPROF"} = join ":", @opts;
@@ -26,10 +27,12 @@ builder {
       httponly    => 1,
       session_key => "isu4_session",
     ),
-    store => Plack::Session::Store::File->new(
-      dir         => $session_dir,
-    ),
-    ;
+    store => Plack::Session::Store::Cache->new(
+      cache => Cache::Memcached::Fast->new(+{
+        servers => ['127.0.0.1:11211'],
+        namespace => 'isu4session',
+      }),
+    );
   enable sub {
     my $app = shift;
     sub {
