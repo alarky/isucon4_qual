@@ -18,9 +18,6 @@ mkdir $session_dir;
 my $app = Isu4Qualifier::Web->psgi($root_dir);
 builder {
   enable 'ReverseProxy';
-  enable 'Static',
-    path => qr!^/(?:stylesheets|images)/!,
-    root => $root_dir . '/public';
   enable 'Plack::Middleware::Profiler::KYTProf',
     threshold => 10,
   ;
