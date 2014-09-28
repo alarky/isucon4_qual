@@ -15,8 +15,6 @@ use POSIX qw/strftime/;
 
 my $redis      = Redis->new(sock => '/tmp/redis.sock');
 
-
-
 my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isu4_qualifier;host=127.0.0.1;port=3306",
                                 "root",
                                 "",
@@ -192,9 +190,20 @@ sub locked_users {
 sub login_log {
   my ($self, $succeeded, $login, $ip, $user_id) = @_;
   if($succeeded == 1){
+     my $old_ip = "";
+     my $old_created_at = "";
+     my $last_succeeded = $redis->hget('last_succeeded', $user_id);
+     if($last_succeeded)
+     {
+         $last_succeeded = decode_json($lastsucceeded);
+         $old_ip	 = $last_succeeded->{next_ip};
+         $old_created_at = $last_succeeded->{next_created_at};
+     }
      my $succeeded_info = +{
-         created_at => strftime("%Y-%m-%d %H:%M:%S",localtime),
-         ip => $ip
+         created_at => $old_created_at,
+         ip => $old_ip,
+         next_created_at => $strftime("%Y-%m-%d %H:%M:%S",localtime),
+         next_ip => $ip
      };
      my $json_succeeded = encode_json($succeeded_info);
 
@@ -208,6 +217,8 @@ sub login_log {
      my $increment = 1;
      $redis->hincrby('failure_by_user', $user_id, $increment);
      $redis->hincrby('failure_by_ip', $ip, $increment);
+
+     $redis->hincrby('total_failure_by_user', $user_id, $increment);
   }
 };
 
