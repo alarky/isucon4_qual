@@ -12,15 +12,15 @@ backend default {
 # Below is a commented-out copy of the default VCL logic.  If you
 # redefine any of these subroutines, the built-in logic will be
 # appended to your code.
-# sub vcl_recv {
-#     if (req.restarts == 0) {
-# 	if (req.http.x-forwarded-for) {
-# 	    set req.http.X-Forwarded-For =
-# 		req.http.X-Forwarded-For + ", " + client.ip;
-# 	} else {
-# 	    set req.http.X-Forwarded-For = client.ip;
-# 	}
-#     }
+sub vcl_recv {
+    if (req.restarts == 0) {
+ 	if (req.http.x-forwarded-for) {
+ 	    set req.http.X-Forwarded-For =
+ 		req.http.X-Forwarded-For + ", " + client.ip;
+ 	} else {
+ 	    set req.http.X-Forwarded-For = client.ip;
+ 	}
+    }
 #     if (req.request != "GET" &&
 #       req.request != "HEAD" &&
 #       req.request != "PUT" &&
@@ -35,12 +35,15 @@ backend default {
 #         /* We only deal with GET and HEAD by default */
 #         return (pass);
 #     }
-#     if (req.http.Authorization || req.http.Cookie) {
-#         /* Not cacheable by default */
-#         return (pass);
-#     }
-#     return (lookup);
-# }
+     if (req.http.Authorization || req.http.Cookie) {
+         /* Not cacheable by default */
+         return (pass);
+     }
+     if (req.url ~ "^/$") {
+		 return (lookup);
+     }
+     return (pass);
+}
 # 
 # sub vcl_pipe {
 #     # Note that only the first request to the backend will have
@@ -74,7 +77,7 @@ backend default {
 #     return (fetch);
 # }
 # 
-# sub vcl_fetch {
+sub vcl_fetch {
 #     if (beresp.ttl <= 0s ||
 #         beresp.http.Set-Cookie ||
 #         beresp.http.Vary == "*") {
@@ -84,8 +87,9 @@ backend default {
 # 		set beresp.ttl = 120 s;
 # 		return (hit_for_pass);
 #     }
-#     return (deliver);
-# }
+     set beresp.ttl = 60s;
+     return (deliver);
+}
 # 
 # sub vcl_deliver {
 #     return (deliver);
