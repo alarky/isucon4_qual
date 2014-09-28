@@ -8,6 +8,25 @@ use DBIx::Sunny;
 use Digest::SHA qw/ sha256_hex /;
 use Data::Dumper;
 
+
+
+my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isucon;host=127.0.0.1;port=3306",
+                                "root",
+                                "",
+                                {
+                                    RaiseError => 1,
+                                    PrintError => 0,
+                                    AutoInactiveDestroy => 1,
+                                    mysql_enable_utf8 => 1,
+                                    mysql_auto_reconnect => 1,
+                                }
+                            );
+
+
+my $users = $dbh->select_all("SELECT * FROM users");
+my %LOGIN_OF = map { $_->{login} => $_ } @$users;
+my %ID_OF_LOGIN = map { $_->{id} => $_->{login} } @$users;
+
 sub config {
   my ($self) = @_;
   $self->{_config} ||= {
@@ -62,7 +81,7 @@ sub ip_banned {
 
 sub attempt_login {
   my ($self, $login, $password, $ip) = @_;
-  my $user = $self->db->select_row('SELECT * FROM users WHERE login = ?', $login);
+  my $user = %LOGIN_OF{$login};
 
   if ($self->ip_banned($ip)) {
     $self->login_log(0, $login, $ip, $user ? $user->{id} : undef);
@@ -91,7 +110,7 @@ sub attempt_login {
 sub current_user {
   my ($self, $user_id) = @_;
 
-  $self->db->select_row('SELECT * FROM users WHERE id = ?', $user_id);
+  return %LOGIN_OF{%ID_OF_LOGIN{$id}};
 };
 
 sub last_login {
