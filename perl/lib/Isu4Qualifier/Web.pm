@@ -72,23 +72,23 @@ sub calculate_password_hash {
 sub user_locked {
   my ($self, $user) = @_;
 
-  my $user = $redis->hget('failure_by_user', $user->{'id'});
-  if(!$user){
+  my $fail_count = $redis->hget('failure_by_user', $user->{'id'});
+  if(!$fail_count){
      return undef;
   }
 
-  return $self->config->{user_lock_threshold} <= $user;
+  return $self->config->{user_lock_threshold} <= $fail_count;
 };
 
 sub ip_banned {
   my ($self, $ip) = @_;
 
-  my $ip = $redis->hget('failure_by_ip', $ip);
-  if(!$ip){
+  my $fail_count = $redis->hget('failure_by_ip', $ip);
+  if(!$fail_count){
      return undef;
   }
 
-  return $self->config->{ip_ban_threshold} <= $ip;
+  return $self->config->{ip_ban_threshold} <= $fail_count;
 };
 
 sub attempt_login {
@@ -195,14 +195,14 @@ sub login_log {
      my $last_succeeded = $redis->hget('last_succeeded', $user_id);
      if($last_succeeded)
      {
-         $last_succeeded = decode_json($lastsucceeded);
+         $last_succeeded = decode_json($last_succeeded);
          $old_ip	 = $last_succeeded->{next_ip};
          $old_created_at = $last_succeeded->{next_created_at};
      }
      my $succeeded_info = +{
          created_at => $old_created_at,
          ip => $old_ip,
-         next_created_at => $strftime("%Y-%m-%d %H:%M:%S",localtime),
+         next_created_at => strftime("%Y-%m-%d %H:%M:%S",localtime),
          next_ip => $ip
      };
      my $json_succeeded = encode_json($succeeded_info);
