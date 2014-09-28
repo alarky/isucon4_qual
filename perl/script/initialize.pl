@@ -27,6 +27,7 @@ $redis->flushall;
 
 my $logs = $dbh->select_all("SELECT * FROM login_log");
 my %total_failure_by_user;
+my %total_failure_by_ip;
 my %failure_by_user;
 my %failure_by_ip;
 my %last_succeeded;
@@ -40,6 +41,7 @@ for my $log (@$logs) {
 		});
     } else {
         $total_failure_by_user{$log->{user_id}}++;
+        $total_failure_by_ip{$log->{ip}}++;
         $failure_by_user{$log->{user_id}}++;
         $failure_by_ip{$log->{ip}}++;
     }
@@ -47,6 +49,8 @@ for my $log (@$logs) {
 
 $redis->hmset('total_failure_by_user', %total_failure_by_user);
 d $redis->hlen('total_failure_by_user');
+$redis->hmset('total_failure_by_ip', %total_failure_by_ip);
+d $redis->hlen('total_failure_by_ip');
 $redis->hmset('failure_by_user', %failure_by_user);
 d $redis->hlen('failure_by_user');
 $redis->hmset('failure_by_ip', %failure_by_ip);
