@@ -15,9 +15,9 @@ use POSIX qw/strftime/;
 
 my $redis      = Redis->new(sock => '/tmp/redis.sock');
 
-my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isu4_qualifier;host=127.0.0.1;port=3306",
-                                "root",
-                                "",
+my $dbh = DBIx::Sunny->connect( 'dbi:mysql:database=isu4_qualifier;host=127.0.0.1;port=3306',
+                                'root',
+                                '',
                                 {
                                     RaiseError => 1,
                                     PrintError => 0,
@@ -27,7 +27,7 @@ my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isu4_qualifier;host=127.0.0.
                                 }
                             );
 
-my $users = $dbh->select_all("SELECT * FROM users");
+my $users = $dbh->select_all('SELECT * FROM users');
 my %LOGIN_OF;
 my %ID_OF;
 for (@$users) {
@@ -265,7 +265,7 @@ post '/login' => sub {
       $self->set_flash($c, 'This account is locked.');
     }
     elsif ($err eq 'banned') {
-      $self->set_flash($c, "You're banned.");
+      $self->set_flash($c, 'You\'re banned.');
     }
     else {
       $self->set_flash($c, 'Wrong username or password');
@@ -284,7 +284,7 @@ get '/mypage' => [qw(session)] => sub {
     $c->render('mypage.tx', { last_login => $self->last_login($user_id) });
   }
   else {
-    $self->set_flash($c, "You must be logged in");
+    $self->set_flash($c, 'You must be logged in');
     $c->redirect('/');
   }
 };
