@@ -46,8 +46,8 @@ for my $log (@$logs) {
 			created_at => $log->{created_at},
 			ip => $log->{ip},
 		});
-        $try_succeeced_till_by_user{$log->{user_id}}++;
-        $try_succeeced_till_by_ip{$log->{ip}}++;
+        $try_succeeced_till_by_user{$log->{user_id}}+=$try_succeeced_try_by_user{$log->{user_id}};
+        $try_succeeced_till_by_ip{$log->{ip}}+=$try_succeeced_try_by_ip{$log->{ip}};
         $try_succeeced_try_by_user{$log->{user_id}} = 0;
         $try_succeeced_try_by_ip{$log->{ip}} = 0;
     } else {
