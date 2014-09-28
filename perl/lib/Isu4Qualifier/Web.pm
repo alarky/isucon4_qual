@@ -24,8 +24,12 @@ my $dbh = DBIx::Sunny->connect( "dbi:mysql:database=isu4_qualifier;host=127.0.0.
 
 
 my $users = $dbh->select_all("SELECT * FROM users");
-my %LOGIN_OF = map { $_->{login} => $_ } @$users;
-my %ID_OF_LOGIN = map { $_->{id} => $_->{login} } @$users;
+my %LOGIN_OF;
+my %ID_OF_LOGIN;
+for (@$users) {
+	$LOGIN_OF{$_->{login}} = $_;
+	$ID_OF_LOGIN{$_->{id}} = $_;
+}
 
 sub config {
   my ($self) = @_;
