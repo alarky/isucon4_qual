@@ -145,15 +145,15 @@ sub banned_ips {
   my %total_failures = $redis->hgetall('total_failure_by_ip');
   foreach my $key(keys(%total_failures)){
      # ログイン成功したことがないipを配列にいれる
-     my $failure_ip = $redis->hget('failure_by_ip', $key);
-     if($failure_by_ip->{count} == $total_failures[$key]){
-        push @user_ids, $key;
+     my $failure_count = $redis->hget('failure_by_ip', $key);
+     if($failure_count == $total_failures{$key}){
+        push @ips, $key;
         continue;
      }
 
      # failureを規定数以上しているipを配列にいれてく
-     if($threshold <= $total_failures[$key]){
-        push @user_ids, $key};
+     if($threshold <= $total_failures{$key}){
+        push @ips, $key;
         continue;
      }
   }
@@ -178,7 +178,7 @@ sub locked_users {
   my %total_failures = $redis->hgetall('total_failure_by_user');
   foreach my $key(keys(%total_failures)){
      # failureを規定数以上している人を配列にいれてく
-     if($threshold <= $total_failures[$key])
+     if($threshold <= $total_failures{$key})
      {
         push @user_ids, $ID_OF{$key}->{login};
      }
