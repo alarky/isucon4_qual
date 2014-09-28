@@ -148,13 +148,13 @@ sub banned_ips {
      my $failure_count = $redis->hget('failure_by_ip', $key);
      if($failure_count == $total_failures{$key}){
         push @ips, $key;
-        continue;
+        next;
      }
 
      # failureを規定数以上しているipを配列にいれてく
      if($threshold <= $total_failures{$key}){
         push @ips, $key;
-        continue;
+        next;
      }
   }
 
